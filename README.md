@@ -63,4 +63,7 @@ The platform consists of the following main layers:
 
 ## Repository structure
 
+---
+##How to deploy
+The Kubernetes namespace used by this project is `showcase-platform`.
 

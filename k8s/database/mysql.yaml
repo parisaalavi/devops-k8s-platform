@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: showcase-platform 
+spec:
+  serviceName: "mysql"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels: 
+        app: mysql
+    spec:  
+      volumes: 
+        - name: mysql-config
+          configMap:
+            name: mysql-configmap
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: pvc-db
+      containers:      
+        - name : mysql
+          image: mysql:8.0.34
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-cred
+                  key: username 
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-cred
+                  key: password
+            - name: MYSQL_DATABASE
+              value:  petclinic
+          volumeMounts:
+            - name: mysql-config
+              mountPath: /docker-entrypoint-initdb.d
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "200m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: mysql-service
+  namespace: showcase-platform
+spec: 
+  type: ClusterIP 
+  selector: 
+    app: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306 

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: java-app
+  namespace: showcase-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java
+  template:
+    metadata: 
+      labels:
+        app: java
+    spec:
+      nodeSelector:
+        node-role: app
+      volumes: 
+        - name: java-app-config
+          configMap:
+            name: cm-app
+      containers:
+        - name: java-app-containers
+          image: myapp:1.0.0
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: java-app-config
+              mountPath: /opt/config
+          args:
+            - "--spring.config.location=/opt/config/application.properties"
+            - "--spring.profiles.active=mysql"
+      
+          env: 
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-cred
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-cred
+                  key: password
+          ports:
+           - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 5
+            failureThreshold: 6
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30   
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+
+            limits:
+              memory: "512Mi"
+              cpu: "200m" 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-app-service
+  namespace: showcase-platform
+spec:
+  selector: 
+    app: java
+  
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
